@@ -59,8 +59,6 @@ int main() {
         std::equal(seq2.begin(), seq2.end(), seq1.begin());  // false
     bool not_equal_2 = std::equal(seq1.begin(), seq1.end(), seq2.begin(),
                                   seq2.end());  // false
-
-    int a = 1;
   }
 
   // mis match
