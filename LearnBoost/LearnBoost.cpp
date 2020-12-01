@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <boost/any.hpp>
 #include <boost/lambda/lambda.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/regex.hpp>
@@ -6,7 +7,6 @@
 #include <iostream>
 #include <iterator>
 #include <vector>
-
 void example_lexical_cast() {
   int s = 23;
   std::string str = boost::lexical_cast<std::string>(s);
@@ -44,6 +44,9 @@ void example_regex() {
   }
 }
 
+// data type is checked at compile time.
+// So we can use Visitor.
+// boost::variant stack based storage.
 void example_variant() {
   boost::variant<int, std::string> u1,
       u2;  // u1 or u2 can store either int or string
@@ -89,7 +92,56 @@ void example_variant() {
   }
 }
 
+// boost::any can store any type of data and uses dynamic storage.
+// boost::variant stack based storage (more efficient in terms of memory
+// management).
+// type can be checked only at compile type with .type() = typeid ();
+void example_any() {
+  boost::any x, y, z;
+  x = std::string("s");
+  x = 2.3;
+  y = 'z';
+  z = std::vector<int>();
+  // std::cout << y << std::endl;// does not work << is not overloaded for any.
+  std::cout << boost::any_cast<char>(y) << std::endl;  // returns a copy of 'z'
+  std::cout << boost::any_cast<double>(x)
+            << std::endl;  // returns a copy of 'z'
+
+  try {
+    std::cout << boost::any_cast<float>(x) << std::endl;  // throws bad_any_cast
+  } catch (boost::bad_any_cast& e) {
+    std::cout << e.what() << std::endl;
+  }
+
+  // check type
+  if (y.type() == typeid(char)) std::cout << "y is char " << std::endl;
+
+  boost::any empty_any;
+  bool is_empty = empty_any.empty();
+
+  /* THIS WILL CRASH
+  boost::any_cast<std::vector<int>>(z).push_back(23);
+  int i = boost::any_cast<std::vector<int>>(z)
+              .back();  // crash. because z still empty. above statement makes a
+                        // copy.
+  */
+  int i = 10;
+  boost::any p = &i;
+  int* pInt = boost::any_cast<int*>(p);  // returns a pointer
+  *pInt = 20;
+  std::cout << i << std::endl;
+
+  std::vector<boost::any> m{2, 'a', p, boost::any()};
+
+  struct Property {
+    std::string name;
+    boost::any value;
+  };
+  std::vector<Property> properties;
+}
+
 int main() {
+  example_any();
   example_variant();
   example_lexical_cast();
   example_regex();
