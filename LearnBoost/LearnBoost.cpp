@@ -1,5 +1,7 @@
 #include <algorithm>
 #include <boost/any.hpp>
+#include <boost/context/continuation.hpp>
+#include <boost/context/fiber.hpp>
 #include <boost/lambda/lambda.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/optional.hpp>
@@ -7,7 +9,10 @@
 #include <boost/variant.hpp>
 #include <iostream>
 #include <iterator>
+//
+#include <deque>
 #include <vector>
+
 void example_lexical_cast() {
   int s = 23;
   std::string str = boost::lexical_cast<std::string>(s);
@@ -209,7 +214,77 @@ void example_optional() {
   if (i1 > i2) std::cout << "greater" << std::endl;
 }
 
+// calculate fibo numbers;
+void example_context_1() {
+  namespace ctx = boost::context;
+  int a;
+  ctx::continuation source = ctx::callcc([&a](ctx::continuation&& sink) {
+    a = 0;
+    int b = 1;
+    for (;;) {
+      sink = sink.resume();
+      int next = a + b;
+      a = b;
+      b = next;
+    }
+    return std::move(sink);
+  });
+
+  for (int j = 0; j < 10; ++j) {
+    std::cout << a << " ";
+    source = source.resume();
+  }
+}
+
+void example_context_2() {
+  namespace ctx = boost::context;
+  std::deque<int> dq;
+
+  ctx::continuation source = ctx::callcc([&dq](ctx::continuation&& sink) {
+    int i{0};
+    for (;;) {
+      dq.push_back(++i);
+      sink = sink.resume();
+    }
+    return std::move(sink);
+  });
+
+  while (!dq.empty()) {
+    int v = dq.back();
+    dq.pop_back();
+    std::cout << v << " ";
+    source = source.resume();
+  }
+}
+
+void example_context_3() {
+  namespace ctx = boost::context;
+  int data = 0;
+  ctx::continuation c = ctx::callcc([&data](ctx::continuation&& c) {
+    std::cout << "f1: entered first time: " << data << std::endl;
+    data += 1;
+    c = c.resume();
+    std::cout << "f1: entered second time: " << data << std::endl;
+    data += 1;
+    c = c.resume();
+    std::cout << "f1: entered third time: " << data << std::endl;
+    return std::move(c);
+  });
+  std::cout << "f1: returned first time: " << data << std::endl;
+  data += 1;
+  c = c.resume();
+  std::cout << "f1: returned second time: " << data << std::endl;
+  data += 1;
+  c = c.resume_with([&data](ctx::continuation&& c) {
+    std::cout << "f2: entered: " << data << std::endl;
+    data = -1;
+    return std::move(c);
+  });
+  std::cout << "f1: returned third time" << std::endl;
+}
+
 int main() {
+  example_context_3();
   example_optional();
   example_any();
   example_variant();
